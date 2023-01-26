@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 instances'
+
+
+Parameters:
+  UrlReposity:
+    Type: String
+  MyIp:
+    Type: String
+  CidrSubnet:
+    Type: String
+  VpcId:
+    Type: String
+  SubnetId:
+    Type: String
+  InstanceType:
+    Type: String
+  ImageId:
+      Type: String
+  User:
+    Type: String        
+  KeyName:
+    Type: String
+
+Resources:
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP traffic
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      #- IpProtocol: "-1"
+      #  CidrIp: "0.0.0.0/0"
+      - IpProtocol: "-1"
+        CidrIp: !Ref MyIp
+      - IpProtocol: "-1"
+        CidrIp: !Ref CidrSubnet
+
+  EC2InstanceApp:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -xe
+            exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+            cd /home/${User}
+            git clone ${UrlReposity} app && chown -R ${User} app
+            bash app/sh/install_docker.sh
+            printf "LATENCY_IP=${EC2InstanceLatency.PrivateIp}\n" > /tmp/env.list
+
+  EC2InstanceLatency:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      ImageId: !Ref ImageId
+      InstanceType: c5.xlarge
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -xe          
+            cd /home/${User}
+            git clone ${UrlReposity} app && chown -R ${User} app
+            bash app/sh/install_docker.sh
+
+  EC2InstanceTest:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      ImageId: !Ref ImageId
+      InstanceType: c5.xlarge
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -xe
+            cd /home/${User}
+            git clone ${UrlReposity} app && chown -R ${User} app
+            bash app/sh/install_docker.sh
+            
+Outputs:
+  PublicIPApp:
+    Description: Public IP of the App EC2 instance
+    Value: !GetAtt EC2InstanceApp.PublicIp
+  PrivateIPApp:
+    Description: Private IP of the App EC2 instance
+    Value: !GetAtt EC2InstanceApp.PrivateIp
+  PublicIPLatency:
+    Description: Public IP of the Latency EC2 instance
+    Value: !GetAtt EC2InstanceLatency.PublicIp
+  PrivateIPLatency:
+    Description: Private IP of the Latency EC2 instance
+    Value: !GetAtt EC2InstanceLatency.PrivateIp
+  PublicIPTest:
+    Description: Public IP of the Test EC2 instance
+    Value: !GetAtt EC2InstanceTest.PublicIp
+  PrivateIPTest:
+    Description: Private IP of the Test EC2 instance
+    Value: !GetAtt EC2InstanceTest.PrivateIp
+    

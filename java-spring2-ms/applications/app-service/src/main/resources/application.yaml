@@ -1,0 +1,17 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: "JavaReactiveMS"
+  devtools:
+    add-properties: false
+  h2:
+    console:
+      enabled: true
+      path: "/h2"
+  profiles:
+    include: null
+adapter:
+  restconsumer:
+    timeout: 5000
+    url: "http://${LATENCY_IP:localhost}:8080"

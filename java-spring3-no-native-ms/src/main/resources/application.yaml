@@ -1,0 +1,9 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: "JavaReactiveMS"
+adapter:
+  restconsumer:
+    timeout: 5000
+    url: "http://${LATENCY_IP:localhost}:8080"
